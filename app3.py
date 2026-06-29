@@ -12,6 +12,8 @@ st.set_page_config(
 COLOR_REAL = "#2E86AB"     # teal/blue -> real news / neutral-positive
 COLOR_FAKE = "#E63946"     # red -> fake news / risk
 COLOR_NEUTRAL = "#6C757D"  # gray -> neutral
+COLOR_NAVY = "#1B1F3B"     # navy -> extended EDA section
+COLOR_PURPLE = "#7B2CBF"   # purple -> extended EDA section
 
 # Cleaning and merging already happened in the team's notebook (Data Cleaning +
 # Feature Engineering & Merging phases). This app only loads that finished
@@ -107,6 +109,7 @@ labels_en = {
 with c3:
     st.subheader("Avg. Behavioral Indicators: Real vs. Fake")
     means = filtered_df.groupby("is_fake")[behavior_cols].mean().rename(index={0: "Real", 1: "Fake"})
+    means = means.reindex(["Real", "Fake"])  # keep both rows even if one group is empty after filtering
     means_t = means.T.reset_index().rename(columns={"index": "indicator"})
     means_t["indicator"] = means_t["indicator"].map(labels_en)
     fig = px.bar(
@@ -208,3 +211,56 @@ with st.expander("⚠️ Data Quality Note"):
         "entirely because of a platform-name mismatch between the two source files "
         "('Twitter' vs. 'X/Twitter' in the AI dataset) — this is worth a fix from the data-cleaning team."
     )
+
+st.divider()
+
+# ---------- Extended EDA: Platform & Addiction Insights ----------
+st.header("📊 Extended EDA: Platform & Addiction Insights")
+
+e1, e2 = st.columns(2)
+
+with e1:
+    st.subheader("Platform Popularity")
+    platform_counts = filtered_df["platform"].value_counts().reset_index()
+    platform_counts.columns = ["platform", "count"]
+    fig = px.bar(
+        platform_counts, x="platform", y="count",
+        color="platform", text="count",
+        color_discrete_sequence=[COLOR_NAVY, COLOR_PURPLE],
+    )
+    fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Records")
+    st.plotly_chart(fig, use_container_width=True)
+
+with e2:
+    st.subheader("Avg. AI Addiction Probability by Platform")
+    addiction_by_platform = (
+        filtered_df.groupby("platform")["ai_addiction_probability"]
+        .mean().sort_values(ascending=False).reset_index()
+    )
+    fig = px.bar(
+        addiction_by_platform, x="platform", y="ai_addiction_probability",
+        color="platform",
+        color_discrete_sequence=[COLOR_NAVY, COLOR_PURPLE],
+    )
+    fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Avg. Addiction Probability")
+    st.plotly_chart(fig, use_container_width=True)
+
+e3, e4 = st.columns(2)
+
+with e3:
+    st.subheader("Distribution of AI Addiction Probability")
+    fig = px.histogram(
+        filtered_df, x="ai_addiction_probability", nbins=40,
+        color_discrete_sequence=[COLOR_PURPLE],
+    )
+    fig.update_layout(xaxis_title="AI Addiction Probability", yaxis_title="Count")
+    st.plotly_chart(fig, use_container_width=True)
+
+with e4:
+    st.subheader("AI Addiction Probability by Age Group")
+    fig = px.box(
+        filtered_df, x="age_group", y="ai_addiction_probability", color="age_group",
+        color_discrete_sequence=[COLOR_NAVY, COLOR_PURPLE],
+    )
+    fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Addiction Probability")
+    st.plotly_chart(fig, use_container_width=True)
